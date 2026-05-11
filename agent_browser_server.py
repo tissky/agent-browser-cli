@@ -44,6 +44,13 @@ def _response(ok: bool, **kwargs: Any) -> dict[str, Any]:
     return data
 
 
+def _close_driver() -> None:
+    """服务退出前释放底层 TMWebDriver，避免扩展仍显示 bridge 已连接。"""
+    driver = getattr(ga, "driver", None)
+    if driver is not None and hasattr(driver, "close"):
+        driver.close()
+
+
 def _wait_for_js(
     wait_js: str,
     switch_tab_id: str | None,
@@ -236,6 +243,7 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if self.path == "/shutdown":
                 shutdown_requested = True
+                _close_driver()
                 self._send(_response(True, status="shutdown_requested"))
                 threading.Thread(target=self.server.shutdown, daemon=True).start()
                 return
@@ -263,6 +271,7 @@ def main() -> int:
     try:
         server.serve_forever()
     finally:
+        _close_driver()
         server.server_close()
     return 0
 

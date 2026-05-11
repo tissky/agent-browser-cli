@@ -107,9 +107,33 @@ class TMWebDriver:
             class _T(ThreadingMixIn, WSGIServer): pass
             class _H(WSGIRequestHandler):
                 def log_request(self, *a): pass
-            make_server(self.host, self.port+1, app, server_class=_T, handler_class=_H).serve_forever()
+            self.http_server = make_server(self.host, self.port+1, app, server_class=_T, handler_class=_H)
+            self.http_server.serve_forever()
         http_thread = threading.Thread(target=run, daemon=True)
         http_thread.start()  
+
+    def close(self):
+        """关闭当前进程启动的底层 bridge，确保 CLI stop 后扩展角标同步断开。"""
+        if self.is_remote:
+            return
+        self._closing = True
+        for session in list(self.sessions.values()):
+            try:
+                if session.ws_client:
+                    session.ws_client.close()
+            except Exception as e:
+                print(f"关闭浏览器扩展连接失败: {e}")
+        try:
+            self.server.close()
+        except Exception as e:
+            print(f"关闭 WebSocket 服务失败: {e}")
+        http_server = getattr(self, 'http_server', None)
+        if http_server:
+            try:
+                http_server.shutdown()
+                http_server.server_close()
+            except Exception as e:
+                print(f"关闭 HTTP 服务失败: {e}")
 
     def clean_sessions(self):
         sids = list(self.sessions.keys())
@@ -157,7 +181,14 @@ class TMWebDriver:
                 driver._unregister_client(self)  
         
         self.server = WebSocketServer(self.host, self.port, JSExecutor)  
-        server_thread = threading.Thread(target=self.server.serve_forever)  
+        def run_ws_server():
+            try:
+                self.server.serve_forever()
+            except OSError as e:
+                if not getattr(self, '_closing', False):
+                    raise
+                print(f"WebSocket 服务已关闭: {e}")
+        server_thread = threading.Thread(target=run_ws_server)  
         server_thread.daemon = True  
         server_thread.start()  
         print(f"WebSocket server running on ws://{self.host}:{self.port}")  
