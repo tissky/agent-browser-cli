@@ -29,7 +29,18 @@ agent-browser-cli --help
 @sleepinsummer/agent-browser-cli
 @sleepinsummer/agent-browser-cli-darwin-arm64
 @sleepinsummer/agent-browser-cli-darwin-x64
+@sleepinsummer/agent-browser-cli-linux-x64
 @sleepinsummer/agent-browser-cli-win32-x64
+```
+
+Linux 使用前请确认本机 Chrome / Chromium 支持安装扩展。
+
+如果在 WSL 中使用，当前版本依赖 WSL 访问宿主机 `localhost` 上的 Chrome 桥接服务。建议环境：
+
+```text
+WSL 2.0.0+
+Windows 11 22H2+
+.wslconfig 中启用 networkingMode=mirrored
 ```
 
 如果当前平台包暂未发布或安装失败，使用源码构建：
@@ -123,4 +134,3 @@ agent-browser-cli exec --tab <tabId> 'return document.title'
 ```text
 skills/agent-browser-cli/SKILL.md
 ```
-
